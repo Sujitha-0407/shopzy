@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shopzy Admin Panel</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+  body { background: #f4f4f7; color: #111; }
+
+  /* Login */
+  #loginPage { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #0f0f0f; }
+  .login-box { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 40px; width: 380px; }
+  .login-box h1 { color: #c4a35a; font-size: 20px; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 4px; }
+  .login-box p { color: #666; font-size: 11px; margin-bottom: 28px; }
+  .login-box input { width: 100%; background: #111; border: 1px solid #2a2a2a; color: #fff; padding: 12px 16px; border-radius: 4px; font-size: 13px; margin-bottom: 12px; outline: none; }
+  .login-box input:focus { border-color: #c4a35a; }
+  .login-box button { width: 100%; background: #fff; color: #000; font-weight: 700; font-size: 13px; padding: 12px; border: none; border-radius: 4px; cursor: pointer; }
+  .login-box button:hover { background: #e5e5e5; }
+  #loginError { color: #ef4444; font-size: 11px; margin-bottom: 12px; display: none; }
+
+  /* Layout */
+  #adminApp { display: none; min-height: 100vh; }
+  .topbar { background: #0f0f0f; color: #fff; padding: 0 24px; height: 52px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .topbar .logo { font-size: 13px; font-weight: 800; letter-spacing: 4px; color: #c4a35a; }
+  .topbar .right { display: flex; align-items: center; gap: 16px; }
+  .topbar .admin-name { font-size: 12px; color: #888; }
+  .topbar .logout-btn { background: none; border: 1px solid #333; color: #888; font-size: 11px; padding: 6px 14px; border-radius: 4px; cursor: pointer; }
+  .topbar .logout-btn:hover { border-color: #ef4444; color: #ef4444; }
+
+  .layout { display: flex; }
+  .sidebar { width: 200px; background: #fff; border-right: 1px solid #e5e5e5; min-height: calc(100vh - 52px); padding: 16px 0; position: sticky; top: 52px; height: calc(100vh - 52px); overflow-y: auto; }
+  .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 12px; font-weight: 600; color: #666; cursor: pointer; border-left: 2px solid transparent; transition: all 0.15s; }
+  .sidebar-item:hover { color: #111; background: #f8f8f8; }
+  .sidebar-item.active { color: #111; border-left-color: #c4a35a; background: #fefdf8; }
+  .sidebar-item span { font-size: 15px; }
+
+  .content { flex: 1; padding: 24px; }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* Cards */
+  .page-title { font-size: 16px; font-weight: 800; color: #111; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card { background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; padding: 20px; }
+  .stat-card .label { font-size: 10px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .stat-card .value { font-size: 28px; font-weight: 800; color: #111; }
+  .stat-card .gold { color: #c4a35a; }
+
+  /* Tables */
+  .card { background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
+  .card-header { padding: 16px 20px; border-bottom: 1px solid #e5e5e5; display: flex; align-items: center; justify-content: space-between; }
+  .card-header h3 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #888; }
+  table { width: 100%; border-collapse: collapse; }
+  th { padding: 10px 16px; text-align: left; font-size: 10px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #e5e5e5; background: #fafafa; }
+  td { padding: 12px 16px; font-size: 12px; color: #333; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+
+  /* Badges */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+  .badge-black { background: #111; color: #fff; }
+  .badge-gold { background: #c4a35a; color: #fff; }
+  .badge-green { background: #d1fae5; color: #065f46; }
+  .badge-red { background: #fee2e2; color: #991b1b; }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+
+  /* Buttons */
+  .btn { padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 700; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-black { background: #111; color: #fff; }
+  .btn-black:hover { background: #333; }
+  .btn-red { background: #ef4444; color: #fff; }
+  .btn-red:hover { background: #dc2626; }
+  .btn-gold { background: #c4a35a; color: #fff; }
+  .btn-gold:hover { background: #b8924e; }
+  .btn-outline { background: none; border: 1px solid #ddd; color: #555; }
+  .btn-outline:hover { border-color: #999; }
+
+  /* Forms */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-group label { font-size: 10px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+  .form-group input, .form-group select, .form-group textarea { background: #f8f8f8; border: 1px solid #e5e5e5; padding: 9px 12px; border-radius: 4px; font-size: 12px; outline: none; color: #111; }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #c4a35a; background: #fff; }
+  .form-group.full { grid-column: 1 / -1; }
+
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #fff; border-radius: 8px; padding: 24px; width: 560px; max-height: 90vh; overflow-y: auto; }
+  .modal h3 { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px; }
+  .modal-footer { margin-top: 20px; display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* Search */
+  .search-bar { padding: 8px 12px; border: 1px solid #e5e5e5; border-radius: 4px; font-size: 12px; outline: none; width: 220px; }
+  .search-bar:focus { border-color: #c4a35a; }
+
+  /* Status select */
+  .status-select { padding: 4px 8px; border: 1px solid #e5e5e5; border-radius: 4px; font-size: 11px; outline: none; cursor: pointer; }
+
+  .img-thumb { width: 36px; height: 36px; object-fit: cover; border-radius: 4px; background: #f0f0f0; }
+  .empty { text-align: center; padding: 40px; color: #aaa; font-size: 12px; }
+  .loading { text-align: center; padding: 40px; color: #aaa; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN PAGE -->
+<div id="loginPage">
+  <div class="login-box">
+    <h1>Shopzy</h1>
+    <p>Admin Panel — Enter your credentials</p>
+    <div id="loginError"></div>
+    <input type="email" id="adminEmail" placeholder="Admin Email" />
+    <input type="password" id="adminPassword" placeholder="Password" />
+    <button onclick="adminLogin()">Login to Admin Panel</button>
+  </div>
+</div>
+
+<!-- ADMIN APP -->
+<div id="adminApp">
+  <div class="topbar">
+    <div class="logo">SHOPZY ADMIN</div>
+    <div class="right">
+      <span class="admin-name" id="adminName"></span>
+      <button class="logout-btn" onclick="adminLogout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-item active" onclick="showSection('dashboard')">
+        <span>📊</span> Dashboard
+      </div>
+      <div class="sidebar-item" onclick="showSection('orders')">
+        <span>📦</span> Orders
+      </div>
+      <div class="sidebar-item" onclick="showSection('products')">
+        <span>🛍️</span> Products
+      </div>
+      <div class="sidebar-item" onclick="showSection('categories')">
+        <span>🏷️</span> Categories
+      </div>
+      <div class="sidebar-item" onclick="showSection('users')">
+        <span>👥</span> Users
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div class="section active" id="dashboard">
+        <div class="page-title">Dashboard</div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="label">Total Orders</div>
+            <div class="value" id="statOrders">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Total Users</div>
+            <div class="value" id="statUsers">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Total Products</div>
+            <div class="value" id="statProducts">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Total Revenue</div>
+            <div class="value gold" id="statRevenue">—</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>Recent Orders</h3></div>
+          <table>
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Customer</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="recentOrdersTable">
+              <tr><td colspan="5" class="loading">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ORDERS -->
+      <div class="section" id="orders">
+        <div class="page-title">All Orders</div>
+        <div class="card">
+          <div class="card-header">
+            <h3>Orders</h3>
+            <input class="search-bar" placeholder="Search by customer or order ID..." oninput="filterOrders(this.value)" />
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Customer</th>
+                <th>Address</th>
+                <th>Payment</th>
+                <th>Amount</th>
+                <th>Tracking</th>
+                <th>Date</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="ordersTable">
+              <tr><td colspan="8" class="loading">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PRODUCTS -->
+      <div class="section" id="products">
+        <div class="page-title">Products</div>
+        <div class="card">
+          <div class="card-header">
+            <h3>All Products</h3>
+            <div style="display:flex;gap:8px;">
+              <input class="search-bar" placeholder="Search products..." oninput="filterProducts(this.value)" />
+              <button class="btn btn-black" onclick="openAddProduct()">+ Add Product</button>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Image</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Price</th>
+                <th>Discount</th>
+                <th>Stock</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="productsTable">
+              <tr><td colspan="7" class="loading">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CATEGORIES -->
+      <div class="section" id="categories">
+        <div class="page-title">Categories</div>
+        <div class="card">
+          <div class="card-header">
+            <h3>All Categories</h3>
+            <button class="btn btn-black" onclick="openAddCategory()">+ Add Category</button>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Icon</th>
+                <th>Name</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="categoriesTable">
+              <tr><td colspan="4" class="loading">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- USERS -->
+      <div class="section" id="users">
+        <div class="page-title">Users</div>
+        <div class="card">
+          <div class="card-header">
+            <h3>All Users</h3>
+            <input class="search-bar" placeholder="Search users..." oninput="filterUsers(this.value)" />
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Role</th>
+                <th>Joined</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersTable">
+              <tr><td colspan="7" class="loading">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCT MODAL -->
+<div class="modal-overlay" id="productModal">
+  <div class="modal">
+    <h3 id="productModalTitle">Add Product</h3>
+    <input type="hidden" id="editProductId" />
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Product Name *</label>
+        <input type="text" id="pName" placeholder="e.g. Wireless Earbuds" />
+      </div>
+      <div class="form-group full">
+        <label>Description</label>
+        <textarea id="pDesc" rows="2" placeholder="Product description..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Price (₹) *</label>
+        <input type="number" id="pPrice" placeholder="e.g. 1999" />
+      </div>
+      <div class="form-group">
+        <label>Stock *</label>
+        <input type="number" id="pStock" placeholder="e.g. 50" />
+      </div>
+      <div class="form-group">
+        <label>Category *</label>
+        <select id="pCategory"></select>
+      </div>
+      <div class="form-group">
+        <label>Discount (%)</label>
+        <input type="number" id="pDiscount" placeholder="e.g. 10" min="0" max="100" />
+      </div>
+      <div class="form-group full">
+        <label>Image URL</label>
+        <input type="text" id="pImage" placeholder="https://images.unsplash.com/..." />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('productModal')">Cancel</button>
+      <button class="btn btn-black" onclick="saveProduct()">Save Product</button>
+    </div>
+  </div>
+</div>
+
+<!-- CATEGORY MODAL -->
+<div class="modal-overlay" id="categoryModal">
+  <div class="modal">
+    <h3>Add Category</h3>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Category Name *</label>
+        <input type="text" id="cName" placeholder="e.g. Electronics" />
+      </div>
+      <div class="form-group">
+        <label>Icon (emoji)</label>
+        <input type="text" id="cIcon" placeholder="e.g. 📱" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('categoryModal')">Cancel</button>
+      <button class="btn btn-black" onclick="saveCategory()">Save Category</button>
+    </div>
+  </div>
+</div>
+
+<!-- ORDER STATUS MODAL -->
+<div class="modal-overlay" id="orderModal">
+  <div class="modal">
+    <h3>Update Order Status</h3>
+    <input type="hidden" id="editOrderId" />
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Tracking Status</label>
+        <select id="oTracking">
+          <option>Order Placed</option>
+          <option>Order Confirmed</option>
+          <option>Shipped</option>
+          <option>Out for Delivery</option>
+          <option>Delivered</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Order Status</label>
+        <select id="oStatus">
+          <option>Pending</option>
+          <option>Processing</option>
+          <option>Confirmed</option>
+          <option>Cancelled</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('orderModal')">Cancel</button>
+      <button class="btn btn-black" onclick="saveOrderStatus()">Update Status</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:4001/api'
+let adminToken = localStorage.getItem('adminToken') || ''
+let allOrders = [], allProducts = [], allUsers = [], allCategories = []
+
+// ── AUTH ──
+async function adminLogin() {
+  const email = document.getElementById('adminEmail').value
+  const password = document.getElementById('adminPassword').value
+  const errEl = document.getElementById('loginError')
+  try {
+    const res = await fetch(`${API}/admin/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    })
+    const data = await res.json()
+    if (!res.ok) { errEl.textContent = data.error; errEl.style.display = 'block'; return }
+    adminToken = data.token
+    localStorage.setItem('adminToken', adminToken)
+    document.getElementById('adminName').textContent = `👤 ${data.user.name}`
+    showAdmin()
+  } catch { errEl.textContent = 'Cannot connect to server'; errEl.style.display = 'block' }
+}
+
+function adminLogout() {
+  localStorage.removeItem('adminToken')
+  adminToken = ''
+  document.getElementById('loginPage').style.display = 'flex'
+  document.getElementById('adminApp').style.display = 'none'
+}
+
+function showAdmin() {
+  document.getElementById('loginPage').style.display = 'none'
+  document.getElementById('adminApp').style.display = 'block'
+  loadDashboard()
+  loadOrders()
+  loadProducts()
+  loadCategories()
+  loadUsers()
+}
+
+// Check if already logged in
+if (adminToken) {
+  document.getElementById('adminApp').style.display = 'block'
+  document.getElementById('loginPage').style.display = 'none'
+  showAdmin()
+}
+
+// ── NAVIGATION ──
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'))
+  document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'))
+  document.getElementById(name).classList.add('active')
+  event.currentTarget.classList.add('active')
+}
+
+// ── DASHBOARD ──
+async function loadDashboard() {
+  const res = await fetch(`${API}/admin/stats`, { headers: { Authorization: `Bearer ${adminToken}` } })
+  const data = await res.json()
+  document.getElementById('statOrders').textContent = data.total_orders
+  document.getElementById('statUsers').textContent = data.total_users
+  document.getElementById('statProducts').textContent = data.total_products
+  document.getElementById('statRevenue').textContent = `₹${parseFloat(data.total_revenue).toLocaleString('en-IN')}`
+
+  // Recent orders in dashboard
+  const tbody = document.getElementById('recentOrdersTable')
+  const recent = allOrders.slice(0, 5)
+  if (recent.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="empty">No orders yet</td></tr>'; return }
+  tbody.innerHTML = recent.map(o => `
+    <tr>
+      <td><strong style="color:#c4a35a">#SHZ${String(o.order_id).padStart(6,'0')}</strong></td>
+      <td>${o.customer_name || 'N/A'}</td>
+      <td><strong>₹${parseFloat(o.total_amount).toLocaleString('en-IN')}</strong></td>
+      <td><span class="badge badge-black">${o.status || 'Pending'}</span></td>
+      <td>${o.created_at ? new Date(o.created_at).toLocaleDateString('en-IN') : 'N/A'}</td>
+    </tr>
+  `).join('')
+}
+
+// ── ORDERS ──
+async function loadOrders() {
+  const res = await fetch(`${API}/admin/orders`, { headers: { Authorization: `Bearer ${adminToken}` } })
+  allOrders = await res.json()
+  renderOrders(allOrders)
+  loadDashboard()
+}
+
+function renderOrders(orders) {
+  const tbody = document.getElementById('ordersTable')
+  if (!orders.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty">No orders found</td></tr>'; return }
+  tbody.innerHTML = orders.map(o => `
+    <tr>
+      <td><strong style="color:#c4a35a">#SHZ${String(o.order_id).padStart(6,'0')}</strong></td>
+      <td>
+        <div style="font-weight:600">${o.customer_name || 'N/A'}</div>
+        <div style="color:#888;font-size:11px">${o.customer_email || ''}</div>
+      </td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.delivery_address || o.address || 'N/A'}</td>
+      <td>${o.payment_method?.toUpperCase() || 'N/A'}</td>
+      <td><strong>₹${parseFloat(o.total_amount).toLocaleString('en-IN')}</strong></td>
+      <td><span class="badge badge-blue">${o.tracking_status || 'Order Placed'}</span></td>
+      <td>${o.created_at ? new Date(o.created_at).toLocaleDateString('en-IN') : 'N/A'}</td>
+      <td>
+        <button class="btn btn-outline" onclick="openOrderModal(${o.order_id}, '${o.tracking_status || 'Order Placed'}', '${o.status || 'Pending'}')">Update</button>
+      </td>
+    </tr>
+  `).join('')
+}
+
+function filterOrders(q) {
+  const filtered = allOrders.filter(o =>
+    o.customer_name?.toLowerCase().includes(q.toLowerCase()) ||
+    String(o.order_id).includes(q)
+  )
+  renderOrders(filtered)
+}
+
+function openOrderModal(id, tracking, status) {
+  document.getElementById('editOrderId').value = id
+  document.getElementById('oTracking').value = tracking
+  document.getElementById('oStatus').value = status
+  document.getElementById('orderModal').classList.add('open')
+}
+
+async function saveOrderStatus() {
+  const id = document.getElementById('editOrderId').value
+  const tracking_status = document.getElementById('oTracking').value
+  const status = document.getElementById('oStatus').value
+  await fetch(`${API}/admin/orders/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+    body: JSON.stringify({ tracking_status, status })
+  })
+  closeModal('orderModal')
+  loadOrders()
+}
+
+// ── PRODUCTS ──
+async function loadProducts() {
+  const res = await fetch(`${API}/products`)
+  allProducts = await res.json()
+  renderProducts(allProducts)
+}
+
+function renderProducts(products) {
+  const tbody = document.getElementById('productsTable')
+  if (!products.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">No products found</td></tr>'; return }
+  tbody.innerHTML = products.map(p => {
+    const cat = allCategories.find(c => c.category_id === p.category_id)
+    return `
+      <tr>
+        <td><img class="img-thumb" src="${p.image_url || 'https://placehold.co/36x36/f0f0f0/999?text=?'}" onerror="this.src='https://placehold.co/36x36/f0f0f0/999?text=?'" /></td>
+        <td style="max-width:200px"><strong>${p.name}</strong></td>
+        <td>${cat ? `${cat.icon} ${cat.category_name}` : 'N/A'}</td>
+        <td>₹${parseFloat(p.price).toLocaleString('en-IN')}</td>
+        <td>${p.discount ? `<span class="badge badge-gold">${p.discount}% OFF</span>` : '—'}</td>
+        <td>${p.stock}</td>
+        <td style="display:flex;gap:6px">
+          <button class="btn btn-outline" onclick="openEditProduct(${p.product_id})">Edit</button>
+          <button class="btn btn-red" onclick="deleteProduct(${p.product_id})">Delete</button>
+        </td>
+      </tr>
+    `
+  }).join('')
+}
+
+function filterProducts(q) {
+  const filtered = allProducts.filter(p => p.name.toLowerCase().includes(q.toLowerCase()))
+  renderProducts(filtered)
+}
+
+function openAddProduct() {
+  document.getElementById('productModalTitle').textContent = 'Add Product'
+  document.getElementById('editProductId').value = ''
+  document.getElementById('pName').value = ''
+  document.getElementById('pDesc').value = ''
+  document.getElementById('pPrice').value = ''
+  document.getElementById('pStock').value = ''
+  document.getElementById('pDiscount').value = ''
+  document.getElementById('pImage').value = ''
+  populateCategorySelect()
+  document.getElementById('productModal').classList.add('open')
+}
+
+function openEditProduct(id) {
+  const p = allProducts.find(p => p.product_id === id)
+  if (!p) return
+  document.getElementById('productModalTitle').textContent = 'Edit Product'
+  document.getElementById('editProductId').value = id
+  document.getElementById('pName').value = p.name
+  document.getElementById('pDesc').value = p.description || ''
+  document.getElementById('pPrice').value = p.price
+  document.getElementById('pStock').value = p.stock
+  document.getElementById('pDiscount').value = p.discount || 0
+  document.getElementById('pImage').value = p.image_key || p.image_url || ''
+  populateCategorySelect(p.category_id)
+  document.getElementById('productModal').classList.add('open')
+}
+
+function populateCategorySelect(selectedId) {
+  const sel = document.getElementById('pCategory')
+  sel.innerHTML = allCategories.map(c =>
+    `<option value="${c.category_id}" ${c.category_id === selectedId ? 'selected' : ''}>${c.icon} ${c.category_name}</option>`
+  ).join('')
+}
+
+async function saveProduct() {
+  const id = document.getElementById('editProductId').value
+  const body = {
+    name: document.getElementById('pName').value,
+    description: document.getElementById('pDesc').value,
+    price: parseFloat(document.getElementById('pPrice').value),
+    stock: parseInt(document.getElementById('pStock').value),
+    category_id: parseInt(document.getElementById('pCategory').value),
+    discount: parseInt(document.getElementById('pDiscount').value) || 0,
+    image_key: document.getElementById('pImage').value,
+  }
+  const url = id ? `${API}/admin/products/${id}` : `${API}/admin/products`
+  const method = id ? 'PATCH' : 'POST'
+  await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+    body: JSON.stringify(body)
+  })
+  closeModal('productModal')
+  loadProducts()
+}
+
+async function deleteProduct(id) {
+  if (!confirm('Delete this product? This cannot be undone.')) return
+  await fetch(`${API}/admin/products/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${adminToken}` }
+  })
+  loadProducts()
+}
+
+// ── CATEGORIES ──
+async function loadCategories() {
+  const res = await fetch(`${API}/categories`)
+  allCategories = await res.json()
+  renderCategories(allCategories)
+}
+
+function renderCategories(cats) {
+  const tbody = document.getElementById('categoriesTable')
+  if (!cats.length) { tbody.innerHTML = '<tr><td colspan="4" class="empty">No categories</td></tr>'; return }
+  tbody.innerHTML = cats.map(c => `
+    <tr>
+      <td>${c.category_id}</td>
+      <td style="font-size:20px">${c.icon || '🛍️'}</td>
+      <td><strong>${c.category_name}</strong></td>
+      <td>
+        <button class="btn btn-red" onclick="deleteCategory(${c.category_id})">Delete</button>
+      </td>
+    </tr>
+  `).join('')
+}
+
+function openAddCategory() {
+  document.getElementById('cName').value = ''
+  document.getElementById('cIcon').value = ''
+  document.getElementById('categoryModal').classList.add('open')
+}
+
+async function saveCategory() {
+  const name = document.getElementById('cName').value
+  const icon = document.getElementById('cIcon').value
+  await fetch(`${API}/admin/categories`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+    body: JSON.stringify({ category_name: name, icon })
+  })
+  closeModal('categoryModal')
+  loadCategories()
+}
+
+async function deleteCategory(id) {
+  if (!confirm('Delete this category?')) return
+  await fetch(`${API}/admin/categories/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${adminToken}` }
+  })
+  loadCategories()
+}
+
+// ── USERS ──
+async function loadUsers() {
+  const res = await fetch(`${API}/admin/users`, { headers: { Authorization: `Bearer ${adminToken}` } })
+  allUsers = await res.json()
+  renderUsers(allUsers)
+}
+
+function renderUsers(users) {
+  const tbody = document.getElementById('usersTable')
+  if (!users.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">No users found</td></tr>'; return }
+  tbody.innerHTML = users.map(u => `
+    <tr>
+      <td>${u.user_id}</td>
+      <td><strong>${u.name}</strong></td>
+      <td>${u.email}</td>
+      <td>${u.phone || '—'}</td>
+      <td>${u.is_admin ? '<span class="badge badge-gold">Admin</span>' : '<span class="badge badge-black">User</span>'}</td>
+      <td>${u.created_at ? new Date(u.created_at).toLocaleDateString('en-IN') : 'N/A'}</td>
+      <td>
+        ${!u.is_admin ? `<button class="btn btn-red" onclick="deleteUser(${u.user_id})">Delete</button>` : '—'}
+      </td>
+    </tr>
+  `).join('')
+}
+
+function filterUsers(q) {
+  const filtered = allUsers.filter(u =>
+    u.name.toLowerCase().includes(q.toLowerCase()) ||
+    u.email.toLowerCase().includes(q.toLowerCase())
+  )
+  renderUsers(filtered)
+}
+
+async function deleteUser(id) {
+  if (!confirm('Delete this user? All their data will be removed.')) return
+  await fetch(`${API}/admin/users/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${adminToken}` }
+  })
+  loadUsers()
+}
+
+// ── UTILS ──
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open')
+}
+
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', (e) => { if (e.target === m) m.classList.remove('open') })
+})
+
+// Enter key on login
+document.getElementById('adminPassword').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') adminLogin()
+})
+</script>
+</body>
+</html>
